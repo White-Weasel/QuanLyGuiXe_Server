@@ -1,5 +1,11 @@
-import socket
+import websocket
+from websocket import create_connection
 
-s = socket.socket()
-s.connect(('ws://localhost:8000/gate-ctrl', 80))
+ws = create_connection("ws://127.0.0.1:8000/gate_status")
 
+ws.send("status")
+result = ws.recv()
+print(f"Received {result}")
+
+ws.send('close')
+#ws.close()

@@ -1,2 +1,3 @@
 fastapi[all]
-fastapi-socketio
+psycopg2
+websocket-client
