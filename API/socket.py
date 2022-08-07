@@ -4,6 +4,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from . import app, db_connect
 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -19,10 +20,14 @@ class ConnectionManager:
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
 
-    async def broadcast(self, message: str):
+    async def broadcast_txt(self, message: str):
         for connection in self.active_connections:
             print(message)
             await connection.send_text(message)
+
+    async def broadcast_json(self, data: dict):
+        for connection in self.active_connections:
+            await connection.send_json(data)
 
 
 manager = ConnectionManager()
@@ -56,7 +61,7 @@ async def gate_status_websocket(websocket: WebSocket):
                 cur.close()
                 conn.close()
 
-                await websocket.send_json({'status': result})
+                await websocket.send_json({'gate_status': result})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         # await manager.broadcast(f"Client left the chat")
