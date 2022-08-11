@@ -48,7 +48,7 @@ async def gate_control(action: GateControl):
     return result
 
 
-@app.post('/parking', status_code=200)
+@app.post('/parking')
 async def parking(info: ParkingInfo, response: Response):
     action = info.action
     result = {}
@@ -60,11 +60,18 @@ async def parking(info: ParkingInfo, response: Response):
         try:
             cur.callproc('vehicle_in', (info.plate, info.ticket))
             result = cur.fetchall()[0][0]
-        except psycopg2.errors.CheckViolation as e:
-            if "no_dup_active_ticket_check" in e.pgerror:
-                response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-                result['result'] = False
-                result['err'] = 'Ve xe da ton tai'
+        except psycopg2.errors.UniqueViolation as e:
+            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            result['result'] = False
+            err_mess = e.pgerror
+            if "unique_active_plate_constaint" in err_mess:
+                result['err'] = 'Xe da o trong bai'
+            elif "unique_active_ticket_constaint" in err_mess:
+                result['err'] = 'Ve xe dang duoc su dung'
+            elif 'unique_active_ticket_plate_constaint' in err_mess:
+                result['err'] = 'Ve xe va xe dang trong bai'
+            else:
+                raise e
     elif action == VehicleAction.out:
         cur.callproc('vehicle_out', (info.plate, info.ticket))
         result = cur.fetchall()[0][0]
