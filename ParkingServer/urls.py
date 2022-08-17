@@ -53,7 +53,18 @@ async def parking(info: ParkingInfo, response: Response):
     action = info.action
     result = {}
     print(info)
-
+    """
+    if len(info.plate) < 1:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        result['result'] = False
+        result['err'] = f'Bien so rong!'
+        return result
+    if info.action == VehicleAction.out and info.ticket is None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        result['result'] = False
+        result['err'] = f'Ve xe rong!'
+        return result
+    """
     conn = db_connect()
     cur = conn.cursor()
     if action == VehicleAction.enter:
@@ -65,11 +76,11 @@ async def parking(info: ParkingInfo, response: Response):
             result['result'] = False
             err_mess = e.pgerror
             if "unique_active_plate_constaint" in err_mess:
-                result['err'] = 'Xe da o trong bai'
+                result['err'] = f'Xe {info.plate} da o trong bai'
             elif "unique_active_ticket_constaint" in err_mess:
-                result['err'] = 'Ve xe dang duoc su dung'
+                result['err'] = f'Ve xe dang duoc su dung'
             elif 'unique_active_ticket_plate_constaint' in err_mess:
-                result['err'] = 'Ve xe va xe dang trong bai'
+                result['err'] = f'Ve xe va xe dang trong bai'
             else:
                 raise e
     elif action == VehicleAction.out:
