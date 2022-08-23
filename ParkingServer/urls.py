@@ -1,11 +1,14 @@
+import datetime
 from typing import Optional
 from fastapi import Response, status
 import psycopg2.errors
+import psycopg2.extras
 from fastapi.responses import HTMLResponse, RedirectResponse
 from . import app, db_connect
 from .socket import manager
 from pydantic import BaseModel
 from enum import Enum
+from utls import replace_last
 
 
 @app.get("/")
@@ -31,6 +34,10 @@ class ParkingInfo(BaseModel):
     plate: str
     ticket: Optional[int] = None
     action: VehicleAction
+    time_in: Optional[datetime.datetime] = None
+    time_out: Optional[datetime.datetime] = None
+    vehivle_type: Optional[int] = 1
+    face: Optional[str] = None
 
 
 @app.post('/gate_control')
@@ -92,4 +99,46 @@ async def parking(info: ParkingInfo, response: Response):
     conn.close()
 
     print(result)
+    return result
+
+
+@app.get('/parking_search')
+def parking_search(response: Response,
+                   plate: Optional[str] = None,
+                   ticket: Optional[int] = None,
+                   time_in: Optional[datetime.datetime] = None,
+                   inside: Optional[bool] = None,
+                   vehivle_type: Optional[int] = None,
+                   face: Optional[str] = None
+                   ):
+    params = {
+        'plate': plate,
+        'ticket': ticket,
+        'time_in': time_in,
+        'inside': inside,
+        'vehivle_type': vehivle_type,
+        'face': face,
+    }
+    params = {k: v for k, v in params.items() if v is not None}
+    result = {'result': False}
+    if len(params) > 0:
+        sql = f"Select * from parking where "
+        data = []
+        for key, value in params.items():
+            sql += f'{key}=%s AND '
+            data.append(value)
+        sql = replace_last(sql, 'AND', '')
+        print(sql)
+
+        conn = db_connect()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, data)
+        result['data'] = cur.fetchall()
+        result['result'] = True
+        cur.close()
+        conn.close()
+    else:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        result['err'] = 'Thong tin rong!'
+
     return result
